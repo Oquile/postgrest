@@ -386,3 +386,71 @@ spec = do
           { matchStatus = 204
           , matchHeaders = [matchHeaderAbsent hContentType]
           }
+
+  context "limited update" $ do
+    it "works with the limit query param" $
+      request methodPatch "/projects?limit=2&select=id,name"
+          [("Prefer", "return=representation")]
+          [json| {"name": "PopOS"} |]
+        `shouldRespondWith`
+          [json|[
+            { "id": 1, "name": "PopOS" },
+            { "id": 2, "name": "PopOS" }]|]
+          { matchStatus = 200 }
+
+    it "works with the limit query param plus a filter" $
+      request methodPatch "/projects?limit=1&id=gt.3&select=id,name"
+          [("Prefer", "return=representation")]
+          [json| {"name": "PopOS"} |]
+        `shouldRespondWith`
+          [json|[{"id": 4, "name": "PopOS" }]|]
+          { matchStatus = 200 }
+
+    it "works with the limit and offset query params" $
+      request methodPatch "/projects?limit=2&offset=2&select=id,name"
+          [("Prefer", "return=representation")]
+          [json| {"name": "PopOS"} |]
+        `shouldRespondWith`
+          [json| [
+            { "id": 3, "name": "PopOS" },
+            { "id": 4, "name": "PopOS" }]|]
+          { matchStatus = 200 }
+
+    it "works with the limit and offset query params plus a filter" $
+      request methodPatch "/projects?limit=1&offset=1&id=gt.3&select=id,name"
+          [("Prefer", "return=representation")]
+          [json| {"name": "PopOS"} |]
+        `shouldRespondWith`
+          [json|[{"id": 5, "name": "PopOS" }]|]
+          { matchStatus = 200 }
+
+    it "works on a table with a composite pk" $
+      request methodPatch "/employees?limit=1&select=first_name,last_name,occupation,salary"
+          [("Prefer", "return=representation")]
+          [json| { "occupation": "Writer" } |]
+        `shouldRespondWith`
+          [json| [ { "first_name": "Daniel B.", "last_name": "Lyon", "occupation": "Writer", "salary": "$36,000.00" } ] |]
+          { matchStatus = 200 }
+
+    it "works with views with an inferred pk" $
+      request methodPatch "/articles?limit=1&offset=1&select=id,body"
+          [("Prefer", "return=representation")]
+          [json| {"body": "This is a row changing. Do you see?"} |]
+        `shouldRespondWith`
+          [json| [ { "body": "This is a row changing. Do you see?", "id": 2 } ] |]
+          { matchStatus = 200 }
+
+    it "works on a table without a pk" $
+      request methodPatch "/no_pk?limit=1&offset=1"
+          [("Prefer", "return=representation")]
+          [json| {"b": 5} |]
+        `shouldRespondWith`
+          [json| [ { "a": "1", "b": "5" } ] |]
+          { matchStatus = 200 }
+
+    it "doesn't work on a view without a pk" $
+      request methodPatch "/no_pk_view?limit=1&offset=1"
+          [("Prefer", "return=representation")]
+          [json| {"b": 5} |]
+        `shouldRespondWith`
+        400

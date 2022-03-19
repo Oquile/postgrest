@@ -2463,3 +2463,6 @@ CREATE AGGREGATE test.unsupported_agg (*) (
   SFUNC = public.dummy,
   STYPE = int
 );
+
+
+create view no_pk_view as select * from no_pk;
