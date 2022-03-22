@@ -115,3 +115,81 @@ spec =
             { matchStatus = 204
             , matchHeaders = [matchHeaderAbsent hContentType]
             }
+
+    context "limited delete" $ do
+      it "works with the limit and offset query params" $
+        request methodDelete "/projects?limit=1&offset=4&select=id,name"
+            [("Prefer", "return=representation")]
+            mempty
+          `shouldRespondWith`
+            [json|[
+              {
+                  "id": 5,
+                  "name": "Orphan"
+              }]|]
+            { matchStatus = 200 }
+
+      it "works with the limit query param plus a filter" $
+        request methodDelete "/projects?limit=1&id=gt.4&select=id,name"
+            [("Prefer", "return=representation")]
+            mempty
+          `shouldRespondWith`
+            [json|[
+              {
+                  "id": 5,
+                  "name": "Orphan"
+              }]|]
+            { matchStatus = 200 }
+
+      it "works with the limit and offset query params plus a filter" $
+        request methodDelete "/projects?limit=1&offset=1&id=gt.3&select=id,name"
+            [("Prefer", "return=representation")]
+            mempty
+          `shouldRespondWith`
+            [json|[
+              {
+                  "id": 5,
+                  "name": "Orphan"
+              }]|]
+            { matchStatus = 200 }
+
+      it "works on a table with a composite pk" $
+        request methodDelete "/employees?limit=1&select=first_name,last_name,occupation,salary"
+            [("Prefer", "return=representation")]
+            mempty
+          `shouldRespondWith`
+            [json| [
+              {
+                "first_name": "Daniel B.",
+                "last_name": "Lyon",
+                "occupation": "Packer",
+                "salary": "$36,000.00"
+              }]|]
+            { matchStatus = 200 }
+
+      it "works with views with an inferred pk" $
+        request methodDelete "/projects_view?limit=1&offset=4&select=id,name"
+            [("Prefer", "return=representation")]
+            mempty
+          `shouldRespondWith`
+            [json|[
+              {
+                  "id": 5,
+                  "name": "Orphan"
+              }]|]
+            { matchStatus = 200 }
+
+    it "works on a table without a pk" $
+      request methodDelete "/no_pk?limit=1&offset=1"
+          [("Prefer", "return=representation")]
+          mempty
+        `shouldRespondWith`
+          [json| [ { "a": "1", "b": "0" } ] |]
+          { matchStatus = 200 }
+
+    it "doesn't work on a view without a pk" $
+      request methodDelete "/no_pk_view?limit=1&offset=1"
+          [("Prefer", "return=representation")]
+          mempty
+        `shouldRespondWith`
+        400
